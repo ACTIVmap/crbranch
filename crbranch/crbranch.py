@@ -47,7 +47,7 @@ class CrBranch:
         seg.to_json("data/intersection.json", longitude, latitude)
 
         self.cr_model = cm.CrModel()
-        self.cr_model.computeModel(G, "data/intersection.json")
+        self.cr_model.computeModel(self.G, "data/intersection.json")
 
 
     def load_data(self, lng = None, lat = None, osm_file = None):
