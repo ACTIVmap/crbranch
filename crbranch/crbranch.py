@@ -2,6 +2,9 @@
 
 from enum import Enum
 import osmnx as ox
+from shapely.geometry import Point
+import geopandas as gp
+import requests
 
 import crmodel.crmodel as cm
 import crmodel.config as cg
@@ -50,15 +53,32 @@ class CrBranch:
         self.cr_model.computeModel(self.G, "data/intersection.json")
 
 
-    def load_data(self, lng = None, lat = None, osm_file = None):
+    def download_osm_data(self, filename, lng, lat, radius):
+        p = Point(lng, lat)
+        gdf_p = gp.GeoDataFrame(geometry=[p]).set_crs('EPSG:4326').to_crs('EPSG:3857')
+        pb = gdf_p.buffer(distance=radius).envelope
+        gdf_l = gp.GeoDataFrame(geometry=pb).to_crs('EPSG:4326')
+        poly = gdf_l['geometry'][0]
+        long1 = poly.exterior.coords.xy[0][0]
+        long2 = poly.exterior.coords.xy[0][1]
+        lat1 = poly.exterior.coords.xy[1][0]
+        lat2 = poly.exterior.coords.xy[1][2]
+        r = requests.get("https://www.openstreetmap.org/api/0.6/map?bbox=%s,%s,%s,%s"%(long1, lat1, long2, lat2), 
+                        allow_redirects=True)
+        if r.status_code != 200:
+            print("Error from OpenStreetMap API. You should try using overpass.")
+            return None
+
+        open(filename, 'wb').write(r.content)    
+
+    def load_data(self, lng = None, lat = None, osm_file = None, radius = 300):
 
         if osm_file:
             self.load_data_from_file(osm_file, lng, lat)
         else:
-            # TODO: download osm file
-            #tmp_file = ???
-            #self.load_data_from_file(tmp_file)
-            pass
+            tmp_file = "data/osm.osm"
+            self.download_osm_data(tmp_file, lng, lat, radius)
+            self.load_data_from_file(tmp_file, lng, lat)
 
     def build_branch(self, branch):
         # TODO
