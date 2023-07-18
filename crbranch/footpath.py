@@ -11,21 +11,32 @@ class Footpath:
         LEFT = 0
         RIGHT = 1
 
+
     def __init__(self, side, nodes = [], is_island = False):
-        self.__side = side
-        self.__edges = [Edge(n1, n2) for n1, n2 in zip(nodes, nodes[1:])]
+        self.side = side
+        self.edges = [Edge(n1, n2) for n1, n2 in zip(nodes, nodes[1:])]
         self.is_island = is_island
+
 
     def build_island(self):
         # TODO
         return Polygon()
 
-    def get_geometry(self):
-        if len(self.__edges) == 0:
+
+    def get_osm_node_ids(self, G):
+        reurn [e.n1 for e in self.edges] + [self.edges[-1].n2]
+
+
+    def get_osm_nodes(self, G):
+        return [(G.nodes[n], G.nodes[e.n1]) for n in self.get_osm_node_ids(G)]
+        
+
+    def get_geometry(self, G):
+        if len(self.edges) == 0:
             return None
 
         if self.is_island:
             return self.build_island()
         else:
-            return LineString([e.n1 for e in self.__edges] + [self.__edges[-1].n2])
+            return LineString([(n["x"], ["y"]) for n in self.get_geometry(G)])
 
