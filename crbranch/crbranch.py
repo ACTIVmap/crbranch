@@ -2,6 +2,8 @@
 
 from enum import Enum
 import osmnx as ox
+import networkx as nx
+from copy import deepcopy
 from shapely.geometry import Point
 import geopandas as gp
 import requests
@@ -10,7 +12,8 @@ import crmodel.crmodel as cm
 import crmodel.config as cg
 import crseg.segmentation as cs
 
-from footpath import Footpath
+from .footpath import Footpath
+from .branch import Branch
 
 class CrBranch:
 
@@ -40,10 +43,10 @@ class CrBranch:
         # build model via crmodel
         ox.settings.useful_tags_way = ox.settings.useful_tags_way + cg.way_tags_to_keep
         ox.settings.useful_tags_node = ox.settings.useful_tags_way + cg.node_tags_to_keep
-        self.G = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
+        self.G_init = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
 
         # prepae network by removing unwanted ways
-        self.G = cs.Segmentation.prepare_network(self.G)
+        self.G = cs.Segmentation.prepare_network(deepcopy(self.G_init))
         # build an undirected version of the graph
         self.undirected_G = ox.utils_graph.get_undirected(self.G)
         # segment it using topology and semantic
@@ -53,6 +56,22 @@ class CrBranch:
 
         self.cr_model = cm.CrModel()
         self.cr_model.computeModel(self.G, "data/intersection.json")
+
+        self.build_inner_region()
+
+
+    def build_inner_region(self):
+        self.branch_edges = []
+        for branch in self.cr_model.crossroad.branches:
+            for way in branch.ways:
+                self.branch_edges.append((way.junctions[0].id, way.junctions[1].id))
+
+        self.inner_edges = []
+
+        for way in self.cr_model.crossroad.ways.values():
+            w = (way.junctions[0].id, way.junctions[1].id)
+            if w not in self.branch_edges:
+                self.inner_edges.append(w)
 
 
     def download_osm_data(self, filename, lng, lat, radius):
@@ -83,25 +102,42 @@ class CrBranch:
             self.load_data_from_file(tmp_file, lng, lat)
 
     def add_branch(self, branch):
-        # TODO
-        pass
+        self.branches.append(branch)
+        # TODO: add other information along the branch
+
+
+    def is_boundary_node(self, id):
+        # if one adjacent edge is inside the intersection, return true
+        for e in self.inner_edges:
+            if e[0] == id or e[1] == id:
+                return True
+        # if one adjacent edge is not a branch, return false
+        for n in self.undirected_G[id]:
+            if (n, id) not in self.branch_edges and (id, n) not in self.branch_edges:
+                return False
+        # otherwise, it's a boundary node
+        return True
 
 
     def init_branch(self, o_branch):
         paths = []
         for way in o_branch.ways:
-            if (way.sidewalks[0]):
-                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, True)
-                paths.append(Footpath(True, path))
-            if (way.sidewalks[1]):
-                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, False)
-                paths.append(Footpath(False, path))
-
-            if (way.island[0]):
-                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, True)
-                paths.append(Footpath(True, path, True))
+            osm_n1 = way.junctions[0].id # first id in the OSM direction
+            osm_n2 = way.junctions[1].id # last id in the OSM direction
+            n1 = osm_n1 if self.is_boundary_node(osm_n1) else osm_n2
+            n2 = osm_n2 if n1 == osm_n1 else osm_n1
+            id_sidewalk = 0 if n1 == osm_n1 else 1
+            if (way.sidewalks[id_sidewalk]):
+                path = Footpath.extend_path(n1, n2, self.undirected_G, n1 == osm_n1)
+                paths.append(Footpath(n1 == osm_n1, path))
+            if (way.sidewalks[(id_sidewalk + 1) % 2]):
+                path = Footpath.extend_path(n1, n2, self.undirected_G, n1 != osm_n1)
+                paths.append(Footpath(n1 != osm_n1, path))
+            if (way.islands[id_sidewalk]):
+                path = Footpath.extend_path(n1, n2, self.undirected_G, n1 == osm_n1)
+                paths.append(Footpath(n1 == osm_n1, path, True))
         
-        return paths
+        return Branch(paths)
 
     def build_branches(self):
 
@@ -114,3 +150,17 @@ class CrBranch:
     def json_export(self, filename):
         # TODO
         pass
+
+    def geojson_export(self, filename):
+        lines = []
+        sides = []
+        is_island = []
+
+        for b in self.branches:
+            for p in b.footpaths:
+                lines.append(p.get_geometry(self.undirected_G))
+                sides.append(p.side)
+                is_island.append(p.is_island)
+        
+        gdr = gp.GeoDataFrame({'side': sides, 'is_island': is_island, 'geometry': lines})
+        gdr.to_file(filename)
