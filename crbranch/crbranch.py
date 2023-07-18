@@ -10,6 +10,8 @@ import crmodel.crmodel as cm
 import crmodel.config as cg
 import crseg.segmentation as cs
 
+from footpath import Footpath
+
 class CrBranch:
 
     class NetworkStructure(Enum):
@@ -86,8 +88,20 @@ class CrBranch:
 
 
     def init_branch(self, o_branch):
-        # TODO
-        print(o_branch)
+        paths = []
+        for way in o_branch.ways:
+            if (way.sidewalks[0]):
+                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, True)
+                paths.append(Footpath(True, path))
+            if (way.sidewalks[1]):
+                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, False)
+                paths.append(Footpath(False, path))
+
+            if (way.island[0]):
+                path = Footpath.extend_path(way.junctions[0], way.junctions[1], self.G, True)
+                paths.append(Footpath(True, path, True))
+        
+        return paths
 
     def build_branches(self):
 

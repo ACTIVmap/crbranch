@@ -40,3 +40,6 @@ class Footpath:
         else:
             return LineString([(n["x"], n["y"]) for n in self.get_osm_nodes(G)])
 
+
+    def extend_path(n1, n2, G):
+        return [n1, n2]
