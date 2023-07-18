@@ -12,6 +12,6 @@ nodes = [21486411, 724112978, 4734568822, 8706544706, 566967069, 25891548, 21647
 
 branch = Branch([Footpath(Footpath.Side.LEFT, nodes), Footpath(Footpath.Side.RIGHT, nodes)])
 
-crbranch.build_branch(branch)
+crbranch.add_branch(branch)
 
 crbranch.json_export("/tmp/out.json")

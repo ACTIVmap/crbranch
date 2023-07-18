@@ -80,15 +80,22 @@ class CrBranch:
             self.download_osm_data(tmp_file, lng, lat, radius)
             self.load_data_from_file(tmp_file, lng, lat)
 
-    def build_branch(self, branch):
+    def add_branch(self, branch):
         # TODO
         pass
 
-    def build_branches(self):
+
+    def init_branch(self, o_branch):
         # TODO
-        # for branch_paths in :
-        #    self.build_branch(branch_paths)
-        pass
+        print(o_branch)
+
+    def build_branches(self):
+
+        self.branches = []
+
+        for o_branch in self.cr_model.crossroad.branches:
+            branch = self.init_branch(o_branch)
+            self.add_branch(branch)
 
     def json_export(self, filename):
         # TODO
