@@ -36,7 +36,8 @@ class CrBranch:
         ox.settings.useful_tags_way = ox.settings.useful_tags_way + cg.way_tags_to_keep
         ox.settings.useful_tags_node = ox.settings.useful_tags_way + cg.node_tags_to_keep
         self.G = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
-
+        self.G = ox.projection.project_graph(self.G, to_crs="EPSG:3857")
+        
         # prepae network by removing unwanted ways
         self.G = cs.Segmentation.prepare_network(self.G)
         # build an undirected version of the graph
