@@ -28,7 +28,7 @@ class Footpath:
 
 
     def get_osm_nodes(self, G):
-        return [(G.nodes[n], G.nodes[e.n1]) for n in self.get_osm_node_ids(G)]
+        return [G.nodes[n] for n in self.get_osm_node_ids(G)]
         
 
     def get_geometry(self, G):
@@ -38,5 +38,5 @@ class Footpath:
         if self.is_island:
             return self.build_island()
         else:
-            return LineString([(n["x"], ["y"]) for n in self.get_geometry(G)])
+            return LineString([(n["x"], n["y"]) for n in self.get_osm_nodes(G)])
 
