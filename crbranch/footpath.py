@@ -24,7 +24,7 @@ class Footpath:
 
 
     def get_osm_node_ids(self, G):
-        reurn [e.n1 for e in self.edges] + [self.edges[-1].n2]
+        return [e.n1 for e in self.edges] + [self.edges[-1].n2]
 
 
     def get_osm_nodes(self, G):
