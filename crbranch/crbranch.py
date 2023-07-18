@@ -35,14 +35,14 @@ class CrBranch:
         # build model via crmodel
         ox.settings.useful_tags_way = ox.settings.useful_tags_way + cg.way_tags_to_keep
         ox.settings.useful_tags_node = ox.settings.useful_tags_way + cg.node_tags_to_keep
-        G = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
+        self.G = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
 
         # prepae network by removing unwanted ways
-        G = cs.Segmentation.prepare_network(G)
+        self.G = cs.Segmentation.prepare_network(self.G)
         # build an undirected version of the graph
-        undirected_G = ox.utils_graph.get_undirected(G)
+        self.undirected_G = ox.utils_graph.get_undirected(self.G)
         # segment it using topology and semantic
-        seg = cs.Segmentation(undirected_G, C0 = self.C0, C1 = self.C1, C2 = self.C2, max_cycle_elements = self.max_cycle_elements)
+        seg = cs.Segmentation(self.undirected_G, C0 = self.C0, C1 = self.C1, C2 = self.C2, max_cycle_elements = self.max_cycle_elements)
         seg.process()
         seg.to_json("data/intersection.json", longitude, latitude)
 
