@@ -45,11 +45,11 @@ class CrBranch:
         # build model via crmodel
         ox.settings.useful_tags_way = ox.settings.useful_tags_way + cg.way_tags_to_keep
         ox.settings.useful_tags_node = ox.settings.useful_tags_way + cg.node_tags_to_keep
-        self.G_init = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
-        self.load_bounds(osm_file, self.G_init)
+        self.G = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
+        self.load_bounds(osm_file, self.G)
             
         # prepare network by removing unwanted ways
-        self.G = cs.Segmentation.prepare_network(deepcopy(self.G_init))
+        self.G = cs.Segmentation.prepare_network(self.G)
         # build an undirected version of the graph
         self.undirected_G = ox.utils_graph.get_undirected(self.G)
         # segment it using topology and semantic
@@ -59,8 +59,11 @@ class CrBranch:
 
         self.cr_model = cm.CrModel()
         self.cr_model.computeModel(self.G, "data/intersection.json")
-
+        # set object list from model (inner region of the intersection)
         self.build_inner_region()
+
+        # finally project on pseudo-mercator (only G)
+        self.G = ox.projection.project_graph(self.G, to_crs="EPSG:3857")
 
 
     def load_bounds(self, osm_file, G):
