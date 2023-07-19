@@ -7,6 +7,8 @@ from copy import deepcopy
 from shapely.geometry import Point
 import geopandas as gp
 import requests
+from xml.dom import minidom
+
 
 import crmodel.crmodel as cm
 import crmodel.config as cg
@@ -44,8 +46,9 @@ class CrBranch:
         ox.settings.useful_tags_way = ox.settings.useful_tags_way + cg.way_tags_to_keep
         ox.settings.useful_tags_node = ox.settings.useful_tags_way + cg.node_tags_to_keep
         self.G_init = ox.graph_from_xml(osm_file, simplify=False, retain_all=True)
-
-        # prepae network by removing unwanted ways
+        self.load_bounds(osm_file, self.G_init)
+            
+        # prepare network by removing unwanted ways
         self.G = cs.Segmentation.prepare_network(deepcopy(self.G_init))
         # build an undirected version of the graph
         self.undirected_G = ox.utils_graph.get_undirected(self.G)
@@ -58,6 +61,21 @@ class CrBranch:
         self.cr_model.computeModel(self.G, "data/intersection.json")
 
         self.build_inner_region()
+
+
+    def load_bounds(self, osm_file, G):
+        file = minidom.parse(osm_file)
+        bounds = file.getElementsByTagName('bounds')
+        minlat = float(bounds[0].attributes["minlat"].value)
+        minlon = float(bounds[0].attributes["minlon"].value)
+        maxlat = float(bounds[0].attributes["maxlat"].value)
+        maxlon = float(bounds[0].attributes["maxlon"].value)
+        nx.set_node_attributes(G, values=False, name="inbounds")
+        for n in G.nodes:
+            x = float(G.nodes[n]["x"])
+            y = float(G.nodes[n]["y"])
+            if x > minlon and x < maxlon and y > minlat and y < maxlat:
+                G.nodes[n]["inbounds"] = True
 
 
     def build_inner_region(self):
@@ -134,9 +152,12 @@ class CrBranch:
                 path = Footpath.extend_path(n1, n2, self.undirected_G, n1 != osm_n1)
                 paths.append(Footpath(n1 != osm_n1, path))
             if (way.islands[id_sidewalk]):
-                path = Footpath.extend_path(n1, n2, self.undirected_G, n1 == osm_n1)
+                path = [n1, n2]
                 paths.append(Footpath(n1 == osm_n1, path, True))
         
+        # TODO: add missing islands
+        # identify the list of open edges (edges that are only in one existing path)
+
         return Branch(paths)
 
     def build_branches(self):
