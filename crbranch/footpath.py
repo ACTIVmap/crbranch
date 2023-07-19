@@ -26,6 +26,9 @@ class Footpath:
 
         return self.osm_ids_island
 
+    def get_osm_edges_island(self, G):
+        ids = self.get_osm_node_ids_island(G)
+        return list(zip(ids, ids[1:])) + [(ids[-1], ids[0])]
 
     def get_osm_node_ids(self):
         if self.osm_ids == None:

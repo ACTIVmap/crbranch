@@ -140,6 +140,27 @@ class CrBranch:
         return True
 
 
+    def get_missing_islands(self, paths):
+        # get edges on each sidewalk
+        sidewalks = [p.edges for p in paths if not p.is_island]
+        if len(sidewalks) != 2:
+            return []
+
+        # compute edges that are in one sidewalk but not in the other
+        edges = [(p, False) for p in sidewalks[0] if p not in sidewalks[1]] + [(p, True) for p in sidewalks[1] if p not in sidewalks[0]]
+
+        result = []
+        # for each of these edge, create a new island, removing the corresponding edges from the
+        # initial list
+        while len(edges) != 0:
+            edge, side = edges.pop()
+            fpath = Footpath(side, edge.to_array(), True)
+            new_edges = fpath.get_osm_edges_island(self.undirected_G)
+            edges = [e for e in edges if e[0] not in new_edges]
+            result.append(fpath)
+
+        return result
+
     def init_branch(self, o_branch):
         paths = []
         for way in o_branch.ways:
@@ -158,8 +179,8 @@ class CrBranch:
                 path = [n1, n2]
                 paths.append(Footpath(n1 == osm_n1, path, True))
         
-        # TODO: add missing islands
-        # identify the list of open edges (edges that are only in one existing path)
+        # add missing islands
+        paths += self.get_missing_islands(paths)
 
         return Branch(paths)
 
